@@ -40,6 +40,7 @@ def add_client():
 #Get all clients
 @app.route("/getall")
 def get_all():
+    change
     try:
         clients=Client.query.all()
         return  jsonify([e.serialize() for e in clients])
