@@ -1,24 +1,11 @@
 import os
+import boto3
 from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# app.config.from_object(os.environ['APP_SETTINGS'])
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-app.config['TESTING'] = True
-app.config['FLASK_ENV'] = 'development'
-app.config['SECRET_KEY'] = 'GDtfDCFYjD'
-app.config['DEBUG'] = True
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-
-db = SQLAlchemy(app)
-
-from models import *
-
-db.create_all()
+client = boto3.client('dynamodb', region_name='us-east-1')
+tableName = 'clientMoneyTable'
 
 #Index
 @app.route("/")
@@ -31,16 +18,25 @@ def add_client():
     name=request.args.get('name')
     money=request.args.get('money')
     try:
-        client=Client(
-            name=name,
-            money=money
+        if not name or not money:
+            return jsonify({'error': 'Please add name of client and Virtual money value'}), 400
+        
+        resp = client.put_item(
+            TableName=tableName,
+            Item = {
+                'name': {'S': name },
+                'money': {'S': money }
+            }
         )
-        db.session.add(client)
-        db.session.commit()
-        return "Client added with id={}".format(client.id)
+
+        return jsonify({
+            'name': name,
+            'money': money
+        })
     except Exception as e:
 	    return(str(e))
 
+'''
 #Get all clients
 @app.route("/getall")
 def get_all():
@@ -58,15 +54,27 @@ def get_by_id(id_):
         return jsonify(client.serialize())
     except Exception as e:
 	    return(str(e))
-
+'''
 #Get client by Name
 @app.route("/getn/<name_>")
 def get_by_name(name_):
     try:
-        client=Client.query.filter_by(name=name_).first()
-        return jsonify(client.serialize())
+        resp = client.get_item(
+            TableName=tableName,
+            Key={
+                'name': { 'S': name_ }
+            }
+        )
+        item = resp.get('Item')
+        if not item:
+            return jsonify({'error': 'Client does not exist'}), 404
+
+        return jsonify({
+            'client': item.get('client').get('S'),
+            'money': item.get('money').get('S')
+        })
     except Exception as e:
 	    return(str(e))
 
 if __name__ == '__main__':
-    app.run()
+    app.run(threaded=True, host='0.0.0.0', port=5000)
