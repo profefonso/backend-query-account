@@ -50,6 +50,7 @@ def get_all():
         return  items
     except Exception as e:
 	    return(str(e))
+
 '''
 #Get client by ID
 @app.route("/get/<id_>")
