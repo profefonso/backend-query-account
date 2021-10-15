@@ -2,6 +2,7 @@ import os
 import boto3
 import uuid
 from flask import Flask, request, jsonify
+from boto3.dynamodb.conditions import Key, Attr
 
 app = Flask(__name__)
 
@@ -44,23 +45,34 @@ def add_client():
 @app.route("/getall")
 def get_all():
     try:
-        table = client.Table(tableName)
-        response = table.scan()
+        response = client.scan(TableName=tableName)
         items = response['Items']
-        return  items
+        return  jsonify(items)
     except Exception as e:
 	    return(str(e))
 
-'''
+
 #Get client by ID
 @app.route("/get/<id_>")
 def get_by_id(id_):
     try:
-        client=Client.query.filter_by(id=id_).first()
-        return jsonify(client.serialize())
+        resp = client.query(
+            TableName=tableName,
+            KeyConditionExpression=Key('id').eq(id_)
+        )
+        item = resp['Item']
+        print(item)
+        if not item:
+            return jsonify({'error': 'Client does not exist'}), 404
+
+        return jsonify({
+            'id': item['id']['S'],
+            'client': item['name']['S'],
+            'money': item['money']['S']
+        })
     except Exception as e:
 	    return(str(e))
-'''
+
 #Get client by Name
 @app.route("/getn/<name_>")
 def get_by_name(name_):
@@ -71,16 +83,18 @@ def get_by_name(name_):
                 'name': { 'S': name_ }
             }
         )
-        item = resp.get('Item')
+        item = resp['Item']
         if not item:
             return jsonify({'error': 'Client does not exist'}), 404
 
         return jsonify({
-            'client': item.get('client').get('S'),
-            'money': item.get('money').get('S')
+            'id': item['id']['S'],
+            'client': item['name']['S'],
+            'money': item['money']['S']
         })
     except Exception as e:
 	    return(str(e))
 
 if __name__ == '__main__':
     app.run(threaded=True, host='0.0.0.0', port=5000)
+
