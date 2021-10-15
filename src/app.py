@@ -1,5 +1,6 @@
 import os
 import boto3
+import uuid
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -17,6 +18,7 @@ def index():
 def add_client():
     name=request.args.get('name')
     money=request.args.get('money')
+    id = str(uuid.uuid4())
     try:
         if not name or not money:
             return jsonify({'error': 'Please add name of client and Virtual money value'}), 400
@@ -25,28 +27,31 @@ def add_client():
             TableName=tableName,
             Item = {
                 'name': {'S': name },
-                'money': {'S': money }
+                'money': {'S': money },
+                'id': {'S': id}
             }
         )
 
         return jsonify({
+            'id': id,
             'name': name,
-            'money': money
+            'money': money,
         })
     except Exception as e:
 	    return(str(e))
 
-'''
 #Get all clients
 @app.route("/getall")
 def get_all():
-    change
     try:
-        clients=Client.query.all()
-        return  jsonify([e.serialize() for e in clients])
+        table = client.Table(tableName)
+        response = table.scan()
+        items = response['Items']
+        return  items
     except Exception as e:
 	    return(str(e))
 
+'''
 #Get client by ID
 @app.route("/get/<id_>")
 def get_by_id(id_):
